@@ -5,5 +5,8 @@
         "istream": "cpp",
         "ostream": "cpp",
         "xstring": "cpp"
+    },
+    "cmake.debugConfig":{
+        "cwd": "${workspaceFolder}"
     }
 }
