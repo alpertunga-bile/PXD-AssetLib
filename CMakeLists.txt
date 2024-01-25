@@ -7,16 +7,25 @@ enable_testing()
 ################################################################################
 ## GLOBAL DEFINITIONS
 
+set(CMAKE_BUILD_TYPE Debug)
+
 set(TEST_PROJECT_NAME asset-test)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGLM_ENABLE_SIMD_AVX2=ON")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGLM_ENABLE_CXX_20=ON")
 
-message(STATUS ${CMAKE_CXX_FLAGS})
+if((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+	add_compile_options(-mavx2)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+	add_compile_options(/QxAVX2)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+	add_compile_options(/arch:AVX2)
+endif()
 
 set(HEADER_FILES
     includes/debug.hpp
     includes/scene.hpp
+    third-party/glm/glm/gtx/quaternion.hpp
     third-party/glm/glm/mat4x4.hpp
     third-party/glm/glm/vec4.hpp
     third-party/fastgltf/include/fastgltf/parser.hpp
@@ -40,16 +49,13 @@ include_directories(
     third-party/glm/glm
 )
 
-add_subdirectory(third-party/fastgltf)
-add_subdirectory(third-party/meshoptimizer)
-add_subdirectory(third-party/glm)
 
 ################################################################################
 ## STATIC LIBRARY DEFINITONS
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME} fastgltf meshoptimizer glm)
+target_link_libraries(${PROJECT_NAME} fastgltf fastgltf_simdjson meshoptimizer glm)
 
 target_precompile_headers(
     ${PROJECT_NAME} PRIVATE
@@ -61,6 +67,7 @@ target_precompile_headers(
     <format>
     <string>
     <unordered_map>
+    <algorithm>
 )
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
@@ -81,9 +88,14 @@ target_precompile_headers(
     <format>
     <string>
     <unordered_map>
+    <algorithm>
 )
 
 target_compile_features(${TEST_PROJECT_NAME} PRIVATE cxx_std_20)
+
+add_subdirectory(third-party/fastgltf)
+add_subdirectory(third-party/meshoptimizer)
+add_subdirectory(third-party/glm)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

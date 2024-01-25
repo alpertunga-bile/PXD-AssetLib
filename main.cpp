@@ -2,14 +2,16 @@
 
 #include <iostream>
 
-int main() {
-  pxd_ass::Scene scene;
+int
+main()
+{
+  pxd::ass::Scene scene;
 
   scene.init("scenes/structure.glb");
 
-  for (auto [k, v] : scene.meshes) {
-    std::cout << v.positions.size() << "\n";
-  }
+  pxd::ass::Mesh mesh;
+  std::string    mesh_name = "hallreactor_circ4500_ReactorOuterWall.001";
+  std::cout << scene.get_mesh_w_name(mesh_name, mesh);
 
   scene.destroy();
 

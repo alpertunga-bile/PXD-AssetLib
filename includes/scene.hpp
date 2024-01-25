@@ -5,6 +5,7 @@
 
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #define GLM_FORCE_SIMD_AVX2
+#define GLM_ENABLE_EXPERIMENTAL
 #include "mat4x4.hpp"
 #include "vec4.hpp"
 
@@ -13,7 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pxd_ass {
+namespace pxd::ass {
 struct Bounds
 {
   glm::vec3 aabb_min;
@@ -22,10 +23,25 @@ struct Bounds
   float     pad;
 };
 
+struct Mesh
+{
+  std::string           name;
+  Bounds                bounds;
+  std::vector<uint32_t> indices;
+
+  std::vector<glm::vec3> positions;
+  std::vector<glm::vec3> normals;
+  std::vector<glm::vec2> uvs;
+};
+
 struct MeshNode
 {
-  std::weak_ptr<MeshNode>                parent;
-  std::vector<std::shared_ptr<MeshNode>> children;
+  std::string name;
+
+  MeshNode*              parent = nullptr;
+  std::vector<MeshNode*> children;
+
+  Mesh* mesh = nullptr;
 
   glm::mat4 local_transform;
   glm::mat4 world_transform;
@@ -39,22 +55,14 @@ struct MeshNode
   }
 };
 
-struct Mesh
-{
-  std::string_view      name;
-  Bounds                bounds;
-  std::vector<uint32_t> indices;
-
-  std::vector<glm::vec3> positions;
-  std::vector<glm::vec3> normals;
-  std::vector<glm::vec2> uvs;
-};
-
 class Scene
 {
 public:
   bool init(std::string_view filepath);
   bool destroy();
+
+  bool get_mesh_w_name(std::string& mesh_name, Mesh& mesh);
+  bool check_mesh_w_name(std::string& mesh_name);
 
 private:
   void load_indices(fastgltf::Asset&     gltf,
@@ -73,12 +81,17 @@ private:
                 fastgltf::Primitive& p,
                 Mesh&                new_mesh,
                 size_t               initial_vertex);
+  void calculate_bounds(Mesh& new_mesh, size_t initial_vertex);
+  void assign_transforms(std::unordered_map<std::string, MeshNode>& _nodes,
+                         std::unordered_map<std::string, Mesh>&     _meshes,
+                         std::vector<std::string>&                  _mesh_names,
+                         std::vector<std::string>&                  _node_names,
+                         fastgltf::Asset&                           gltf);
 
 public:
-  std::unordered_map<std::string_view, Mesh>             meshes;
-  std::unordered_map<std::string_view, MeshNode>         nodes;
-  std::unordered_map<std::string_view, std::string_view> image_files;
-
-  std::vector<MeshNode> top_nodes;
+  std::unordered_map<std::string, Mesh>             meshes;
+  std::unordered_map<std::string, MeshNode>         nodes;
+  std::vector<MeshNode*>                            parent_nodes;
+  std::unordered_map<std::string, std::string_view> image_files;
 };
 }
