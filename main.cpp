@@ -7,7 +7,7 @@ main()
 {
   pxd::ass::Scene scene;
 
-  scene.init("scenes/structure.glb");
+  scene.init("scenes/Fox.glb", pxd::ass::PXD_ASS_IMPORTER::ASSIMP);
 
   pxd::ass::Mesh mesh;
   std::string    mesh_name = "hallreactor_circ4500_ReactorOuterWall.001";
