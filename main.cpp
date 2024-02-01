@@ -11,6 +11,10 @@ main()
 
   scene.optimize_meshes();
 
+  for (auto& [k, v] : scene.meshes) {
+    v.calculate_quads();
+  }
+
   scene.destroy();
 
   return 0;

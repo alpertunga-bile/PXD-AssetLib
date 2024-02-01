@@ -10,7 +10,7 @@ public:
   virtual bool init(std::string_view&                          filepath,
                     std::unordered_map<std::string, Mesh>&     meshes,
                     std::unordered_map<std::string, MeshNode>& nodes,
-                    std::vector<MeshNode*> parent_nodes) override;
+                    std::vector<MeshNode*>& parent_nodes) override;
 
 private:
   void load_indices(fastgltf::Asset&     gltf,

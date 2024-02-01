@@ -26,6 +26,35 @@ struct Vertex
   glm::vec2 uv;
 };
 
+struct Triangle
+{
+  uint32_t i_0;
+  uint32_t i_1;
+  uint32_t i_2;
+
+  bool operator==(Triangle& t)
+  {
+    return (i_0 == t.i_0 && i_1 == t.i_1 && i_2 == t.i_2) ? true : false;
+  }
+};
+
+struct Quad
+{
+  uint32_t i_0;
+  uint32_t i_1;
+  uint32_t i_2;
+  uint32_t i_3;
+
+  Triangle t1;
+  Triangle t2;
+
+  bool operator==(Quad& q)
+  {
+    return (t1 == q.t1 && t2 == q.t2) || (t2 == q.t1 && t1 == q.t2) ? true
+                                                                    : false;
+  }
+};
+
 struct Mesh
 {
   std::string           name;
@@ -36,8 +65,13 @@ struct Mesh
   std::vector<glm::vec3> normals;
   std::vector<glm::vec2> uvs;
 
+  std::vector<Triangle> triangles;
+  std::vector<Quad>     quads;
+
   std::vector<Vertex> get_AoS();
   void                from_AoS(std::vector<Vertex>& vertices);
+  void                calculate_triangles();
+  void                calculate_quads();
 };
 
 struct MeshNode
@@ -67,6 +101,6 @@ public:
   virtual bool init(std::string_view&                          filepath,
                     std::unordered_map<std::string, Mesh>&     meshes,
                     std::unordered_map<std::string, MeshNode>& nodes,
-                    std::vector<MeshNode*> parent_nodes) = 0;
+                    std::vector<MeshNode*>& parent_nodes) = 0;
 };
 }

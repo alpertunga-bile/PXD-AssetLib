@@ -13,7 +13,7 @@ bool
 FastGltfImport::init(std::string_view&                          filepath,
                      std::unordered_map<std::string, Mesh>&     meshes,
                      std::unordered_map<std::string, MeshNode>& nodes,
-                     std::vector<MeshNode*>                     parent_nodes)
+                     std::vector<MeshNode*>&                    parent_nodes)
 {
   fastgltf::Parser parser(
     fastgltf::Extensions::MSFT_texture_dds |

@@ -69,7 +69,8 @@ Scene::optimize_meshes()
 
     std::vector<Vertex> target_vertices(vertex_count);
 
-    meshopt_remapIndexBuffer(mesh.indices.data(), NULL, index_count, &remap[0]);
+    meshopt_remapIndexBuffer(
+      mesh.indices.data(), mesh.indices.data(), index_count, &remap[0]);
     meshopt_remapVertexBuffer(target_vertices.data(),
                               &temp_vertices[0],
                               total_vertices,

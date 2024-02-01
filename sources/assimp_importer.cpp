@@ -12,7 +12,7 @@ bool
 AssimpImport::init(std::string_view&                          filepath,
                    std::unordered_map<std::string, Mesh>&     meshes,
                    std::unordered_map<std::string, MeshNode>& nodes,
-                   std::vector<MeshNode*>                     parent_nodes)
+                   std::vector<MeshNode*>&                    parent_nodes)
 {
 
   Assimp::Importer importer;
