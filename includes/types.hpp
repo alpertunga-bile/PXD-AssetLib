@@ -19,6 +19,13 @@ struct Bounds
   float     pad;
 };
 
+struct Vertex
+{
+  glm::vec3 pos;
+  glm::vec3 normal;
+  glm::vec2 uv;
+};
+
 struct Mesh
 {
   std::string           name;
@@ -28,6 +35,9 @@ struct Mesh
   std::vector<glm::vec3> positions;
   std::vector<glm::vec3> normals;
   std::vector<glm::vec2> uvs;
+
+  std::vector<Vertex> get_AoS();
+  void                from_AoS(std::vector<Vertex>& vertices);
 };
 
 struct MeshNode

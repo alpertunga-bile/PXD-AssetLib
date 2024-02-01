@@ -17,12 +17,15 @@ AssimpImport::init(std::string_view&                          filepath,
 
   Assimp::Importer importer;
 
+  importer.SetPropertyInteger("AI_CONFIG_PP_FD_REMOVE", 1);
+
   const aiScene* scene = importer.ReadFile(
     filepath.data(),
-    aiProcess_JoinIdenticalVertices | aiProcess_Triangulate |
-      aiProcess_GenSmoothNormals | aiProcess_SplitLargeMeshes |
-      aiProcess_FixInfacingNormals | aiProcess_FindDegenerates |
-      aiProcess_GenUVCoords | aiProcess_OptimizeMeshes | aiProcess_FlipUVs |
+    aiProcess_CalcTangentSpace | aiProcess_ImproveCacheLocality |
+      aiProcess_Triangulate | aiProcess_GenSmoothNormals |
+      aiProcess_SplitLargeMeshes | aiProcess_FixInfacingNormals |
+      aiProcess_FindDegenerates | aiProcess_GenUVCoords |
+      aiProcess_OptimizeMeshes | aiProcess_FlipUVs |
       aiProcess_GenBoundingBoxes);
 
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
@@ -35,8 +38,6 @@ AssimpImport::init(std::string_view&                          filepath,
   }
 
   process_node(scene->mRootNode, scene, meshes, nodes);
-
-  nodes.erase(std::string(scene->mRootNode->mName.C_Str()));
 
   assign_children(scene->mRootNode, nodes);
   add_parents(nodes, parent_nodes);

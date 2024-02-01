@@ -15,6 +15,8 @@ struct Scene
   bool init(std::string_view filepath, PXD_ASS_IMPORTER importer);
   bool destroy();
 
+  void optimize_meshes();
+
   bool get_mesh_w_name(std::string& mesh_name, Mesh& mesh);
   bool check_mesh_w_name(std::string& mesh_name);
 

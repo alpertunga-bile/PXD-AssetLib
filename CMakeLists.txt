@@ -49,6 +49,7 @@ set(SOURCE_FILES
     sources/debug.cpp
     sources/assimp_importer.cpp
     sources/fastgltf_importer.cpp
+    sources/types.cpp
     ${HEADER_FILES}
 )
 

@@ -7,11 +7,9 @@ main()
 {
   pxd::ass::Scene scene;
 
-  scene.init("scenes/Fox.glb", pxd::ass::PXD_ASS_IMPORTER::ASSIMP);
+  scene.init("scenes/Sponza.gltf", pxd::ass::PXD_ASS_IMPORTER::ASSIMP);
 
-  pxd::ass::Mesh mesh;
-  std::string    mesh_name = "hallreactor_circ4500_ReactorOuterWall.001";
-  std::cout << scene.get_mesh_w_name(mesh_name, mesh);
+  scene.optimize_meshes();
 
   scene.destroy();
 
