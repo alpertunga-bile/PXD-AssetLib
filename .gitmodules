@@ -1,0 +1,12 @@
+[submodule "third-party/fastgltf"]
+	path = third-party/fastgltf
+	url = https://github.com/spnda/fastgltf.git
+[submodule "third-party/assimp"]
+	path = third-party/assimp
+	url = https://github.com/assimp/assimp.git
+[submodule "third-party/glm"]
+	path = third-party/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "third-party/meshoptimizer"]
+	path = third-party/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
