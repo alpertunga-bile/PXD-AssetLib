@@ -10,3 +10,6 @@
 [submodule "third-party/meshoptimizer"]
 	path = third-party/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer.git
+[submodule "third-party/PXD-STL"]
+	path = third-party/PXD-STL
+	url = https://github.com/alpertunga-bile/PXD-STL.git
