@@ -1,21 +1,23 @@
-#include "scene.hpp"
+#include "model.hpp"
+
+#include "types.hpp"
 
 #include <iostream>
 
 int
 main()
 {
-  pxd::ass::Scene scene;
+  pxd::ass::Model model;
 
-  scene.init("scenes/Sponza.gltf", pxd::ass::PXD_ASS_IMPORTER::ASSIMP);
+  model.init("scenes/Sponza.gltf", pxd::ass::IMPORTER::ASSIMP);
 
-  scene.optimize_meshes();
+  // model.optimize_meshes();
 
-  for (auto& [k, v] : scene.meshes) {
-    v.calculate_quads();
-  }
+  std::vector<pxd::ass::Mesh> meshes = model.get_meshes();
 
-  scene.destroy();
+  std::cout << model.parent_nodes[0]->meshes[0]->name;
+
+  model.destroy();
 
   return 0;
 }

@@ -1,19 +1,21 @@
 #include "fastgltf_importer.hpp"
 
-#include "debug.hpp"
+#include "logger.hpp"
 
-#include "glm_element_traits.hpp"
-#include "parser.hpp"
-#include "tools.hpp"
+#include "types.hpp"
+
+#include "fastgltf/core.hpp"
+#include "fastgltf/glm_element_traits.hpp"
+#include "fastgltf/tools.hpp"
 
 #include "gtx/quaternion.hpp"
 
 namespace pxd::ass {
-bool
-FastGltfImport::init(std::string_view&                          filepath,
-                     std::unordered_map<std::string, Mesh>&     meshes,
-                     std::unordered_map<std::string, MeshNode>& nodes,
-                     std::vector<MeshNode*>&                    parent_nodes)
+auto
+FastGltfImport::init(std::string_view&                           filepath,
+                     absl::flat_hash_map<std::string, Mesh>&     meshes,
+                     absl::flat_hash_map<std::string, MeshNode>& nodes,
+                     std::vector<MeshNode*>& parent_nodes) -> bool
 {
   fastgltf::Parser parser(
     fastgltf::Extensions::MSFT_texture_dds |
@@ -44,9 +46,7 @@ FastGltfImport::init(std::string_view&                          filepath,
   fastgltf::GltfType type = fastgltf::determineGltfFileType(&data);
 
   if (type == fastgltf::GltfType::Invalid) {
-    LOG_WARNING(
-      std::format("Failed to load {} glTF scene, INVALID_SCENE", filepath)
-        .c_str());
+    PXD_LOG_WARNING("Failed to load {} glTF scene, INVALID_SCENE", filepath);
     return false;
   }
 
@@ -76,7 +76,7 @@ FastGltfImport::init(std::string_view&                          filepath,
     }
 
     mesh_names.push_back(new_mesh.name);
-    meshes[new_mesh.name] = new_mesh;
+    meshes.insert({ new_mesh.name, new_mesh });
   }
 
   assign_transforms(nodes, meshes, mesh_names, node_names, gltf);
@@ -189,11 +189,11 @@ FastGltfImport::calculate_bounds(Mesh& new_mesh, size_t initial_vertex)
 
 void
 FastGltfImport::assign_transforms(
-  std::unordered_map<std::string, MeshNode>& _nodes,
-  std::unordered_map<std::string, Mesh>&     _meshes,
-  std::vector<std::string>&                  _mesh_names,
-  std::vector<std::string>&                  _node_names,
-  fastgltf::Asset&                           gltf)
+  absl::flat_hash_map<std::string, MeshNode>& _nodes,
+  absl::flat_hash_map<std::string, Mesh>&     _meshes,
+  std::vector<std::string>&                   _mesh_names,
+  std::vector<std::string>&                   _node_names,
+  fastgltf::Asset&                            gltf)
 {
   for (fastgltf::Node& node : gltf.nodes) {
     MeshNode new_node;
@@ -229,7 +229,7 @@ FastGltfImport::assign_transforms(
       node.transform);
 
     _node_names.push_back(new_node.name);
-    _nodes[new_node.name] = new_node;
+    _nodes.insert({ new_node.name, new_node });
   }
 }
 }

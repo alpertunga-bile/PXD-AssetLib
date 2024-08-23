@@ -1,39 +1,84 @@
 #include "assimp_importer.hpp"
 
-#include "debug.hpp"
+#include "types.hpp"
+
+#include "logger.hpp"
 
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
+#include "assimp/scene.h"
 
-#include <filesystem>
+#include "mat4x4.hpp"
+#include "vec2.hpp"
+#include "vec3.hpp"
 
 namespace pxd::ass {
+
+template<typename T = aiVector3D>
+auto
+ai2glm_vec3(T&& ai) -> glm::vec3
+{
+  return glm::vec3{ ai.x, ai.y, ai.z };
+}
+
+template<typename T = aiVector2D>
+auto
+ai2glm_vec2(T&& ai) -> glm::vec2
+{
+  return glm::vec2{ ai.x, ai.y };
+}
+
+template<typename T = aiMatrix4x4>
+auto
+ai2glm_mat4x4(aiMatrix4x4& ai) -> glm::mat4
+{
+  return glm::mat4(ai.a1,
+                   ai.b1,
+                   ai.c1,
+                   ai.d1,
+                   ai.a2,
+                   ai.b2,
+                   ai.c2,
+                   ai.d2,
+                   ai.a3,
+                   ai.b3,
+                   ai.c3,
+                   ai.d3,
+                   ai.a4,
+                   ai.b4,
+                   ai.c4,
+                   ai.d4);
+}
+
 bool
-AssimpImport::init(std::string_view&                          filepath,
-                   std::unordered_map<std::string, Mesh>&     meshes,
-                   std::unordered_map<std::string, MeshNode>& nodes,
-                   std::vector<MeshNode*>&                    parent_nodes)
+AssimpImport::init(std::string_view&                           filepath,
+                   absl::flat_hash_map<std::string, Mesh>&     meshes,
+                   absl::flat_hash_map<std::string, MeshNode>& nodes,
+                   std::vector<MeshNode*>&                     parent_nodes)
 {
 
   Assimp::Importer importer;
 
   importer.SetPropertyInteger("AI_CONFIG_PP_FD_REMOVE", 1);
 
-  const aiScene* scene = importer.ReadFile(
-    filepath.data(),
+  unsigned int read_flags =
     aiProcess_CalcTangentSpace | aiProcess_ImproveCacheLocality |
-      aiProcess_Triangulate | aiProcess_GenSmoothNormals |
-      aiProcess_SplitLargeMeshes | aiProcess_FixInfacingNormals |
-      aiProcess_FindDegenerates | aiProcess_GenUVCoords |
-      aiProcess_OptimizeMeshes | aiProcess_FlipUVs |
-      aiProcess_GenBoundingBoxes);
+    aiProcess_Triangulate | aiProcess_GenSmoothNormals |
+    aiProcess_SplitLargeMeshes | aiProcess_FixInfacingNormals |
+    aiProcess_FindDegenerates | aiProcess_GenUVCoords |
+    aiProcess_OptimizeMeshes | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes;
+
+#if defined(PXD_ASS_SPLIT_LARGE_MESHES)
+  read_flags |= aiProcess_SplitLargeMeshes
+#endif
+
+    const aiScene* scene = importer.ReadFile(filepath.data(), read_flags);
 
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
       !scene->mRootNode) {
-    LOG_WARNING(std::format("Scene cannot load for {} with error {}",
-                            filepath,
-                            importer.GetErrorString())
-                  .c_str());
+    PXD_LOG_WARNING("Scene cannot load for {} with error {}",
+                    filepath,
+                    importer.GetErrorString());
     return false;
   }
 
@@ -46,45 +91,47 @@ AssimpImport::init(std::string_view&                          filepath,
 }
 
 void
-AssimpImport::process_node(aiNode*                                    node,
-                           const aiScene*                             scene,
-                           std::unordered_map<std::string, Mesh>&     meshes,
-                           std::unordered_map<std::string, MeshNode>& nodes)
+AssimpImport::process_node(aiNode*                                     node,
+                           const aiScene*                              scene,
+                           absl::flat_hash_map<std::string, Mesh>&     meshes,
+                           absl::flat_hash_map<std::string, MeshNode>& nodes)
 {
   aiMesh*     mesh = nullptr;
   std::string mesh_name;
 
   MeshNode mesh_node;
   mesh_node.name = node->mName.C_Str();
+  mesh_node.meshes.reserve(node->mNumMeshes);
 
-  for (int i = 0; i < node->mNumMeshes; i++) {
+  for (int i = 0; i < node->mNumMeshes; ++i) {
     mesh      = scene->mMeshes[node->mMeshes[i]];
     mesh_name = mesh->mName.C_Str();
 
     Mesh mesh_struct;
-    meshes[mesh_name] = process_mesh(mesh, scene);
+    meshes.insert({ mesh_name, process_mesh(mesh, scene) });
 
     mesh_node.meshes.push_back(&meshes[mesh_name]);
   }
 
   mesh_node.local_transform = ai2glm_mat4x4(node->mTransformation);
 
-  nodes[mesh_node.name] = mesh_node;
+  nodes.insert({ mesh_node.name, mesh_node });
 
-  for (int i = 0; i < node->mNumChildren; i++) {
+  for (int i = 0; i < node->mNumChildren; ++i) {
     process_node(node->mChildren[i], scene, meshes, nodes);
   }
 }
 
-Mesh
-AssimpImport::process_mesh(aiMesh* mesh, const aiScene* scene)
+auto
+AssimpImport::process_mesh(aiMesh* mesh, const aiScene* scene) -> Mesh
 {
   unsigned int size = mesh->mNumVertices;
 
   Mesh temp_mesh;
 
-  temp_mesh.bounds.aabb_min = ai2glm(mesh->mAABB.mMin);
-  temp_mesh.bounds.aabb_max = ai2glm(mesh->mAABB.mMax);
+  temp_mesh.name            = mesh->mName.C_Str();
+  temp_mesh.bounds.aabb_min = ai2glm_vec3(mesh->mAABB.mMin);
+  temp_mesh.bounds.aabb_max = ai2glm_vec3(mesh->mAABB.mMax);
   temp_mesh.bounds.sphere_radius =
     glm::length(temp_mesh.bounds.aabb_max - temp_mesh.bounds.aabb_min) / 2.f;
 
@@ -92,28 +139,28 @@ AssimpImport::process_mesh(aiMesh* mesh, const aiScene* scene)
   temp_mesh.normals.resize(size);
   temp_mesh.uvs.resize(size);
 
-  for (unsigned int i = 0; i < size; i++) {
-    temp_mesh.positions[i] = ai2glm(mesh->mVertices[i]);
+  for (unsigned int i = 0; i < size; ++i) {
+    temp_mesh.positions[i] = ai2glm_vec3(mesh->mVertices[i]);
 
     if (mesh->HasNormals()) {
-      temp_mesh.normals[i] = ai2glm(mesh->mNormals[i]);
+      temp_mesh.normals[i] = ai2glm_vec3(mesh->mNormals[i]);
     } else {
       temp_mesh.normals[i] = glm::vec3{ 0.f };
     }
 
     if (mesh->mTextureCoords[0]) {
-      temp_mesh.uvs[i] = ai2glm(mesh->mTextureCoords[0][i]);
+      temp_mesh.uvs[i] = ai2glm_vec2(mesh->mTextureCoords[0][i]);
     } else {
       temp_mesh.uvs[i] = glm::vec2{ 0.f };
     }
   }
 
-  aiFace face;
+  temp_mesh.indices.reserve(mesh->mNumFaces * mesh->mFaces[0].mNumIndices);
 
   for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-    face = mesh->mFaces[i];
+    aiFace face = mesh->mFaces[i];
 
-    for (unsigned int j = 0; j < face.mNumIndices; j++) {
+    for (unsigned int j = 0; j < face.mNumIndices; ++j) {
       temp_mesh.indices.push_back(face.mIndices[j]);
     }
   }
@@ -123,16 +170,18 @@ AssimpImport::process_mesh(aiMesh* mesh, const aiScene* scene)
 
 void
 AssimpImport::assign_children(aiNode* root_node,
-                              std::unordered_map<std::string, MeshNode>& nodes)
+                              absl::flat_hash_map<std::string, MeshNode>& nodes)
 {
-  for (auto& [node_name, node] : nodes) {
+  for (auto&& [node_name, node] : nodes) {
     aiNode* parent_node = root_node->FindNode(node.name.c_str());
 
     if (parent_node == nullptr) {
       continue;
     }
 
-    for (int i = 0; i < parent_node->mNumChildren; i++) {
+    nodes[node_name].children.reserve(parent_node->mNumChildren);
+
+    for (int i = 0; i < parent_node->mNumChildren; ++i) {
       std::string child_name = parent_node->mChildren[i]->mName.C_Str();
 
       nodes[child_name].parent = &nodes[node_name];
@@ -142,10 +191,10 @@ AssimpImport::assign_children(aiNode* root_node,
 }
 
 void
-AssimpImport::add_parents(std::unordered_map<std::string, MeshNode>& nodes,
+AssimpImport::add_parents(absl::flat_hash_map<std::string, MeshNode>& nodes,
                           std::vector<MeshNode*>& parent_nodes)
 {
-  for (auto& [node_name, node] : nodes) {
+  for (auto&& [node_name, node] : nodes) {
     if (node.parent != nullptr) {
       continue;
     }

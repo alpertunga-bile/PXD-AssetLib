@@ -1,7 +1,12 @@
 #include "types.hpp"
-#include <algorithm>
-#include <format>
-#include <string_view>
+
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#define GLM_FORCE_SIMD_AVX2
+#define GLM_ENABLE_EXPERIMENTAL
+#include "mat4x4.hpp"
+#include "vec4.hpp"
+
+#include "absl/flat_hash_map.hpp"
 
 namespace pxd::ass {
 std::vector<Vertex>
@@ -70,65 +75,58 @@ struct QuadTriangle
 bool
 is_adjacent(Triangle& a, Triangle& b)
 {
-  if ((a.i_0 == b.i_0 && a.i_1 == b.i_1) ||
-      (a.i_0 == b.i_0 && a.i_1 == b.i_2) ||
-      (a.i_0 == b.i_0 && a.i_2 == b.i_1) ||
-      (a.i_0 == b.i_0 && a.i_2 == b.i_2) ||
+  return (
+    (a.i_0 == b.i_0 && a.i_1 == b.i_1) || (a.i_0 == b.i_0 && a.i_1 == b.i_2) ||
+    (a.i_0 == b.i_0 && a.i_2 == b.i_1) || (a.i_0 == b.i_0 && a.i_2 == b.i_2) ||
 
-      (a.i_0 == b.i_1 && a.i_1 == b.i_0) ||
-      (a.i_0 == b.i_1 && a.i_1 == b.i_2) ||
-      (a.i_0 == b.i_1 && a.i_2 == b.i_0) ||
-      (a.i_0 == b.i_1 && a.i_2 == b.i_2) ||
+    (a.i_0 == b.i_1 && a.i_1 == b.i_0) || (a.i_0 == b.i_1 && a.i_1 == b.i_2) ||
+    (a.i_0 == b.i_1 && a.i_2 == b.i_0) || (a.i_0 == b.i_1 && a.i_2 == b.i_2) ||
 
-      (a.i_0 == b.i_2 && a.i_1 == b.i_1) ||
-      (a.i_0 == b.i_2 && a.i_1 == b.i_0) ||
-      (a.i_0 == b.i_2 && a.i_2 == b.i_1) ||
-      (a.i_0 == b.i_2 && a.i_2 == b.i_0)) {
-    return true;
-  }
-
-  return false;
+    (a.i_0 == b.i_2 && a.i_1 == b.i_1) || (a.i_0 == b.i_2 && a.i_1 == b.i_0) ||
+    (a.i_0 == b.i_2 && a.i_2 == b.i_1) || (a.i_0 == b.i_2 && a.i_2 == b.i_0));
 }
 
 uint32_t
 get_different_index(Triangle& a, Triangle& b)
 {
+  uint32_t diff_index = 0;
+
   if (a.i_0 == b.i_0 && a.i_1 == b.i_1) {
-    return b.i_2;
+    diff_index = b.i_2;
   } else if (a.i_0 == b.i_0 && a.i_1 == b.i_2) {
-    return b.i_1;
+    diff_index = b.i_1;
   } else if (a.i_0 == b.i_0 && a.i_2 == b.i_1) {
-    return b.i_2;
+    diff_index = b.i_2;
   } else if (a.i_0 == b.i_0 && a.i_2 == b.i_2) {
-    return b.i_1;
+    diff_index = b.i_1;
   }
 
   if (a.i_0 == b.i_1 && a.i_1 == b.i_0) {
-    return b.i_2;
+    diff_index = b.i_2;
   } else if (a.i_0 == b.i_1 && a.i_1 == b.i_2) {
-    return b.i_0;
+    diff_index = b.i_0;
   } else if (a.i_0 == b.i_1 && a.i_2 == b.i_0) {
-    return b.i_2;
+    diff_index = b.i_2;
   } else if (a.i_0 == b.i_1 && a.i_2 == b.i_2) {
-    return b.i_0;
+    diff_index = b.i_0;
   }
 
   if (a.i_0 == b.i_2 && a.i_1 == b.i_0) {
-    return b.i_1;
+    diff_index = b.i_1;
   } else if (a.i_0 == b.i_2 && a.i_1 == b.i_1) {
-    return b.i_0;
+    diff_index = b.i_0;
   } else if (a.i_0 == b.i_2 && a.i_2 == b.i_0) {
-    return b.i_1;
+    diff_index = b.i_1;
   } else if (a.i_0 == b.i_2 && a.i_2 == b.i_1) {
-    return b.i_0;
+    diff_index = b.i_0;
   }
 
-  return 0;
+  return diff_index;
 }
 
 void
-fill_quad_triangles(std::vector<Triangle>&     triangles,
-                    std::vector<QuadTriangle>& quad_triangles)
+fill_quad_triangles(const std::vector<Triangle>& triangles,
+                    std::vector<QuadTriangle>&   quad_triangles)
 {
   const size_t triangle_size = triangles.size();
 
@@ -156,25 +154,21 @@ get_quad_string(Quad& q)
   uint32_t index[4] = { q.i_0, q.i_1, q.i_2, q.i_3 };
   std::sort(index, index + 4);
 
-  return std::format("{}_{}_{}_{}",
-                     std::to_string(index[0]),
-                     std::to_string(index[1]),
-                     std::to_string(index[2]),
-                     std::to_string(index[3]));
+  return fmt::format("{}_{}_{}_{}", index[0], index[1], index[2], index[3]);
 }
 
 void
 Mesh::calculate_quads()
 {
-  if (triangles.size() == 0) {
+  if (triangles.empty()) {
     calculate_triangles();
   }
 
   std::vector<QuadTriangle> quad_triangles;
   fill_quad_triangles(triangles, quad_triangles);
 
-  const size_t                          quad_size = quad_triangles.size();
-  std::unordered_map<std::string, Quad> temp_quad;
+  const size_t                           quad_size = quad_triangles.size();
+  absl::flat_hash_map<std::string, Quad> temp_quads;
 
   for (size_t i = 0; i < quad_size; i++) {
     Quad         q;
@@ -204,11 +198,11 @@ Mesh::calculate_quads()
     q.t2  = best_match;
     q.i_3 = get_different_index(q.t1, q.t2);
 
-    temp_quad[get_quad_string(q)] = q;
+    temp_quads.insert({ get_quad_string(q), q });
   }
 
-  const size_t temp_quad_size = temp_quad.size();
-  auto         it             = temp_quad.begin();
+  const size_t temp_quad_size = temp_quads.size();
+  auto         it             = temp_quads.begin();
   quads.clear();
   quads.resize(temp_quad_size);
 
@@ -216,15 +210,6 @@ Mesh::calculate_quads()
     quads[i] = it->second;
     it++;
   }
-}
-
-bool
-IImporter::init(std::string_view&                          filepath,
-                std::unordered_map<std::string, Mesh>&     meshes,
-                std::unordered_map<std::string, MeshNode>& nodes,
-                std::vector<MeshNode*>&                    parent_nodes)
-{
-  return false;
 }
 
 }
